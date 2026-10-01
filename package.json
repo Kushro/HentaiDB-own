@@ -1,0 +1,17 @@
+{
+  "name": "tatakai-extension-hentaidb",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsx build.ts",
+    "sign": "tsx build.ts && tsx sign.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.25.0",
+    "jszip": "^3.10.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

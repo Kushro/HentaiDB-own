@@ -1,0 +1,35 @@
+{
+  "id": "tatakai.extension.hentaidb",
+  "name": "HentaiDB",
+  "type": "custom",
+  "version": "1.1.0",
+  "author": "Tatakai Community",
+  "description": "Browse, search and watch the full hentaidb.xyz catalog — servers, series info, tags and all. Isolated custom watch source; never touches your anime watchlist.",
+  "categories": ["Custom Source", "Watch", "Read"],
+  "priority": 50,
+  "capabilities": ["custom-source"],
+  "apiServer": {
+    "namespace": "hentaidb",
+    "contract": "custom-source-v1",
+    "routes": ["custom/home", "custom/search", "custom/info", "custom/watch", "custom/read"],
+    "healthPath": "/health"
+  },
+  "customSources": [
+    {
+      "id": "hentaidb",
+      "kind": "watch",
+      "name": "HentaiDB",
+      "icon": "flame",
+      "description": "The full hentaidb.xyz library — popular, 4K, uncensored and tag-browsable."
+    },
+    {
+      "id": "hentaidb-comics",
+      "kind": "read",
+      "name": "HentaiDB Comics",
+      "icon": "book-open",
+      "description": "18k+ doujin & comics from hentaidb.xyz — searchable and tag-browsable."
+    }
+  ],
+  "sideloaded": true,
+  "permissions": ["network:domain:hentaidb.xyz"]
+}
