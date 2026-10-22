@@ -51,10 +51,43 @@ export async function getText(url: string): Promise<string> {
   return res.text();
 }
 
+// Hostnames for the local machine or a private network (name-based, no DNS).
+function isPrivateHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (!host || host === 'localhost' || host.endsWith('.localhost')) return true;
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
+  }
+  return host.includes(':') && (host === '::' || host === '::1' || /^f[cd]|^fe[89ab]|^::ffff:/.test(host));
+}
+
+// Scraped paths become absolute URLs on BASE. Absolute URLs from the page are
+// kept (media may sit on a CDN) unless they carry credentials or point at a
+// private/loopback host — a tampered page must not aim the app at the LAN.
 export function abs(p: string): string {
   if (!p) return '';
-  if (/^https?:\/\//i.test(p)) return p;
+  if (/^https?:\/\//i.test(p)) {
+    try {
+      const u = new URL(p);
+      return u.username || u.password || isPrivateHost(u.hostname) ? '' : u.href;
+    } catch {
+      return '';
+    }
+  }
   return BASE + (p.startsWith('/') ? p : '/' + p);
+}
+
+// Like abs(), but the result must stay on hentaidb.xyz: used for URLs this
+// extension fetches itself, which the manifest only permits on that domain.
+function siteUrl(p: string): string {
+  const u = abs(p);
+  const site = new URL(BASE).hostname;
+  const host = u ? new URL(u).hostname : '';
+  if (host !== site && !host.endsWith('.' + site)) throw new Error(`refusing off-site URL ${u || p}`);
+  return u;
 }
 
 // Poster/thumbnail URL. hentaidb serves resized images at /i/<w><path> for
@@ -155,7 +188,7 @@ async function discoverCatalogUrl(): Promise<string> {
   const html = await getText(BASE + '/');
   const m = html.match(/data-cat="([^"]+)"/);
   if (!m) throw new Error('catalog url (data-cat) not found on homepage');
-  return abs(m[1]);
+  return siteUrl(m[1]);
 }
 
 async function loadCatalog(): Promise<Catalog> {
@@ -504,7 +537,7 @@ export async function episodeSources(watchId: string): Promise<SourceResult[]> {
   }
 
   const rawTracks: SubtitleTrack[] = (ep.tracks || [])
-    .filter((t) => t && t.file && (t.kind === 'captions' || t.kind === 'subtitles'))
+    .filter((t) => t && t.file && abs(t.file) && (t.kind === 'captions' || t.kind === 'subtitles'))
     .map((t) => {
       const u = abs(t.file);
       return {
@@ -553,8 +586,9 @@ export async function episodeSources(watchId: string): Promise<SourceResult[]> {
     };
   };
 
-  const sub = (ep.src || []).filter((x) => x && x.file && !x.off).map((x) => toSource(x, 'sub'));
-  const dub = (ep.dub || []).filter((x) => x && x.file && !x.off).map((x) => toSource(x, 'dub'));
+  const playable = (x: EpSrc) => x && x.file && !x.off && abs(x.file);
+  const sub = (ep.src || []).filter(playable).map((x) => toSource(x, 'sub'));
+  const dub = (ep.dub || []).filter(playable).map((x) => toSource(x, 'dub'));
   const all = [...sub, ...dub];
   // Highest quality first so the player defaults to the best stream.
   all.sort((a, b) => rung(b.quality) - rung(a.quality));

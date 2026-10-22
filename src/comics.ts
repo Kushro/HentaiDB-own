@@ -143,7 +143,7 @@ export async function comicInfo(slug: string): Promise<ComicInfoResult> {
   const title = cleanTitle(
     (hsvp.name as string) || slug.replace(/-[0-9a-f]{6,}$/, '').replace(/[-~]/g, ' '),
   );
-  const image = hsvp.image ? abs(String(hsvp.image)) : undefined;
+  const image = hsvp.image ? abs(String(hsvp.image)) || undefined : undefined;
 
   return {
     id: slug,
@@ -170,5 +170,6 @@ export async function comicRead(slug: string): Promise<ComicReadResult> {
     return { pages: [] };
   }
   const list = Array.isArray(cxr.pages) ? (cxr.pages as string[]) : [];
-  return { pages: list.map((p, i) => ({ pageNumber: i + 1, imageUrl: abs(p) })) };
+  const urls = list.map(abs).filter(Boolean);
+  return { pages: urls.map((imageUrl, i) => ({ pageNumber: i + 1, imageUrl })) };
 }
